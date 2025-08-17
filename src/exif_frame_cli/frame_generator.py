@@ -8,11 +8,12 @@ from .models import ExifData
 class FrameGenerator:
     """Generate instant camera-style frames with EXIF metadata."""
     
-    def __init__(self, style: str = "classic", quality: int = 95, font_scale: float = 1.0, theme: str = "black"):
+    def __init__(self, style: str = "classic", quality: int = 95, font_scale: float = 1.0, theme: str = "black", layout: str = "compact"):
         self.style = style
         self.quality = quality
         self.font_scale = font_scale
         self.theme = theme.lower()
+        self.layout = layout.lower()
         
         # Set colors based on theme
         if self.theme == "white":
@@ -28,21 +29,38 @@ class FrameGenerator:
         """Calculate frame dimensions based on image size."""
         width, height = image_size
         
-        # No margins on top, left, and right - only bottom margin for text
-        side_margin = 0                    # No side margins
-        top_margin = 0                     # No top margin
-        bottom_margin = int(height * 0.15) # 15% of height for metadata area (reduced from 25%)
-        
-        new_width = width                  # Same width as original image
-        new_height = height + bottom_margin # Only add bottom margin
-        
-        return {
-            'new_size': (new_width, new_height),
-            'image_position': (0, 0),      # Position image at top-left corner
-            'text_area_start': height,     # Text starts right after image
-            'text_area_height': bottom_margin,
-            'side_margin': 0               # No side margins for text centering
-        }
+        if self.layout == "full":
+            # Full margins on all sides - original instant camera style
+            side_margin = int(width * 0.05)   # 5% of width for sides
+            top_margin = int(height * 0.05)   # 5% of height for top
+            bottom_margin = int(height * 0.25) # 25% of height for metadata area
+            
+            new_width = width + (side_margin * 2)
+            new_height = height + top_margin + bottom_margin
+            
+            return {
+                'new_size': (new_width, new_height),
+                'image_position': (side_margin, top_margin),
+                'text_area_start': height + top_margin,
+                'text_area_height': bottom_margin,
+                'side_margin': side_margin
+            }
+        else:  # compact layout (default)
+            # No margins on top, left, and right - only bottom margin for text
+            side_margin = 0                    # No side margins
+            top_margin = 0                     # No top margin
+            bottom_margin = int(height * 0.15) # 15% of height for metadata area
+            
+            new_width = width                  # Same width as original image
+            new_height = height + bottom_margin # Only add bottom margin
+            
+            return {
+                'new_size': (new_width, new_height),
+                'image_position': (0, 0),      # Position image at top-left corner
+                'text_area_start': height,     # Text starts right after image
+                'text_area_height': bottom_margin,
+                'side_margin': 0               # No side margins for text centering
+            }
     
     def _get_font_size(self, text: str, max_width: int, max_height: int) -> int:
         """Calculate appropriate font size for given text and area."""
@@ -101,6 +119,57 @@ class FrameGenerator:
         
         # Get text dimensions
         bbox = draw.textbbox((0, 0), text, font=font)
+        
+        color = text_color if text_color is not None else self.primary_text_color
+        draw.text((x_position, y_position), text, fill=color, font=font)
+        return bbox[3] - bbox[1]  # Return text height
+    
+    def _draw_text_center(self, draw: ImageDraw.Draw, text: str, center_x: int, y_position: int, 
+                         font_size: int, bold: bool = False, text_color=None):
+        """Draw text centered horizontally."""
+        # Try more stylish fonts first
+        if bold:
+            font_names = [
+                "HelveticaNeue-Medium.ttc",   # macOS Helvetica Neue Medium
+                "HelveticaNeue-Bold.ttc",     # macOS Helvetica Neue Bold
+                "Helvetica-Bold.ttc",         # macOS Helvetica Bold
+                "SF-Pro-Display-Medium.otf",  # macOS San Francisco Medium
+                "Roboto-Medium.ttf",          # Google Roboto Medium
+                "Inter-Medium.ttf",           # Inter Medium
+                "Lato-Bold.ttf",              # Lato Bold
+                "Arial-Bold.ttf",             # Fallback Arial Bold
+                "DejaVuSans-Bold.ttf"         # Linux fallback Bold
+            ]
+        else:
+            font_names = [
+                "HelveticaNeue-Light.ttc",    # macOS Helvetica Neue Light
+                "Helvetica Neue.ttc",         # macOS Helvetica Neue
+                "Helvetica.ttc",              # macOS Helvetica
+                "SF-Pro-Display-Light.otf",   # macOS San Francisco Light
+                "Roboto-Light.ttf",           # Google Roboto Light
+                "Inter-Light.ttf",            # Inter Light
+                "Lato-Light.ttf",             # Lato Light
+                "Arial.ttf",                  # Fallback Arial
+                "DejaVuSans.ttf"              # Linux fallback
+            ]
+        
+        font = None
+        for font_name in font_names:
+            try:
+                font = ImageFont.truetype(font_name, font_size)
+                break
+            except (OSError, IOError):
+                continue
+        
+        if font is None:
+            font = ImageFont.load_default()
+        
+        # Get text dimensions
+        bbox = draw.textbbox((0, 0), text, font=font)
+        text_width = bbox[2] - bbox[0]
+        
+        # Position text centered
+        x_position = center_x - text_width // 2
         
         color = text_color if text_color is not None else self.primary_text_color
         draw.text((x_position, y_position), text, fill=color, font=font)
@@ -184,9 +253,14 @@ class FrameGenerator:
         # Add metadata text
         draw = ImageDraw.Draw(framed_image)
         
-        # Calculate layout like the sample image
-        left_margin = 100   # Left margin for left-aligned text
-        right_margin = 100  # Right margin for right-aligned text
+        # Calculate layout based on layout mode
+        if self.layout == "full":
+            # Use frame side margins plus additional padding
+            left_margin = frame_info['side_margin'] + 40
+            right_margin = frame_info['side_margin'] + 40
+        else:  # compact layout
+            left_margin = 100   # Left margin for left-aligned text
+            right_margin = 100  # Right margin for right-aligned text
         
         # Left side: Camera and Lens info
         camera_lens_text = f"{exif_data.camera_full_name}"
@@ -203,7 +277,13 @@ class FrameGenerator:
         
         # Calculate font sizes (smaller to match sample style)
         base_font_size = max(24, int(frame_info['text_area_height'] * 0.15))
-        base_font_size = int(base_font_size * 1.3)  # Increase font size by 1.3x
+        
+        # Adjust font size based on layout
+        if self.layout == "full":
+            base_font_size = int(base_font_size * 1.0)  # Normal size for full layout
+        else:
+            base_font_size = int(base_font_size * 1.3)  # Larger size for compact layout
+            
         small_font_size = int(base_font_size * 0.75)  # Second line smaller
         
         # Use theme colors
@@ -213,51 +293,77 @@ class FrameGenerator:
         # Calculate vertical positioning
         text_area_center_y = frame_info['text_area_start'] + frame_info['text_area_height'] // 2
         
-        # Draw left side text (camera and lens)
-        camera_lines = camera_lens_text.split('\n')
-        
-        # Calculate actual text heights for proper centering
-        large_line_height = int(base_font_size * 1.2)
-        small_line_height = int(small_font_size * 1.2)
-        
-        # Calculate total height for left side
-        total_left_height = 0
-        if len(camera_lines) > 0:
-            total_left_height += large_line_height  # First line
-        if len(camera_lines) > 1:
-            total_left_height += small_line_height  # Second line
-        
-        start_y_left = text_area_center_y - total_left_height // 2
-        current_y = start_y_left
-        
-        for i, line in enumerate(camera_lines):
-            if i == 0:  # First line (camera) - larger, bold, white
-                self._draw_text_left(draw, line, left_margin, current_y, base_font_size, bold=True, text_color=primary_color)
-                current_y += large_line_height
-            else:  # Second line (lens) - smaller, light, gray
-                self._draw_text_left(draw, line, left_margin, current_y, small_font_size, bold=False, text_color=secondary_color)
-                current_y += small_line_height
-        
-        # Draw right side text (settings and datetime)
-        right_lines = right_side_text.split('\n')
-        
-        # Calculate total height for right side
-        total_right_height = 0
-        if len(right_lines) > 0:
-            total_right_height += large_line_height  # First line
-        if len(right_lines) > 1:
-            total_right_height += small_line_height  # Second line
-        
-        start_y_right = text_area_center_y - total_right_height // 2
-        current_y = start_y_right
-        
-        for i, line in enumerate(right_lines):
-            if i == 0:  # First line (settings) - larger, bold, white
-                self._draw_text_right(draw, line, frame_info['new_size'][0] - right_margin, current_y, base_font_size, bold=True, text_color=primary_color)
-                current_y += large_line_height
-            else:  # Second line (datetime) - smaller, light, gray
-                self._draw_text_right(draw, line, frame_info['new_size'][0] - right_margin, current_y, small_font_size, bold=False, text_color=secondary_color)
-                current_y += small_line_height
+        if self.layout == "full":
+            # Full layout: center-aligned text like original instant camera style
+            # Combine camera and settings into single centered text blocks
+            camera_info_text = f"{exif_data.camera_full_name}"
+            if exif_data.lens_model and exif_data.lens_model != "Unknown Lens":
+                camera_info_text += f" / {exif_data.lens_model}"
+            
+            settings_info_text = exif_data.format_settings()
+            if exif_data.format_datetime():
+                settings_info_text += f" • {exif_data.format_datetime()}"
+            
+            # Calculate text positioning for center alignment
+            large_line_height = int(base_font_size * 1.4)
+            small_line_height = int(small_font_size * 1.4)
+            total_height = large_line_height + small_line_height
+            
+            start_y = text_area_center_y - total_height // 2
+            frame_center_x = frame_info['new_size'][0] // 2
+            
+            # Draw camera info (larger, bold)
+            self._draw_text_center(draw, camera_info_text, frame_center_x, start_y, base_font_size, bold=True, text_color=primary_color)
+            
+            # Draw settings info (smaller, lighter)
+            self._draw_text_center(draw, settings_info_text, frame_center_x, start_y + large_line_height, small_font_size, bold=False, text_color=secondary_color)
+            
+        else:
+            # Compact layout: left/right aligned text
+            camera_lines = camera_lens_text.split('\n')
+            
+            # Calculate actual text heights for proper centering
+            large_line_height = int(base_font_size * 1.2)
+            small_line_height = int(small_font_size * 1.2)
+            
+            # Calculate total height for left side
+            total_left_height = 0
+            if len(camera_lines) > 0:
+                total_left_height += large_line_height  # First line
+            if len(camera_lines) > 1:
+                total_left_height += small_line_height  # Second line
+            
+            start_y_left = text_area_center_y - total_left_height // 2
+            current_y = start_y_left
+            
+            for i, line in enumerate(camera_lines):
+                if i == 0:  # First line (camera) - larger, bold, white
+                    self._draw_text_left(draw, line, left_margin, current_y, base_font_size, bold=True, text_color=primary_color)
+                    current_y += large_line_height
+                else:  # Second line (lens) - smaller, light, gray
+                    self._draw_text_left(draw, line, left_margin, current_y, small_font_size, bold=False, text_color=secondary_color)
+                    current_y += small_line_height
+            
+            # Draw right side text (settings and datetime)
+            right_lines = right_side_text.split('\n')
+            
+            # Calculate total height for right side
+            total_right_height = 0
+            if len(right_lines) > 0:
+                total_right_height += large_line_height  # First line
+            if len(right_lines) > 1:
+                total_right_height += small_line_height  # Second line
+            
+            start_y_right = text_area_center_y - total_right_height // 2
+            current_y = start_y_right
+            
+            for i, line in enumerate(right_lines):
+                if i == 0:  # First line (settings) - larger, bold, white
+                    self._draw_text_right(draw, line, frame_info['new_size'][0] - right_margin, current_y, base_font_size, bold=True, text_color=primary_color)
+                    current_y += large_line_height
+                else:  # Second line (datetime) - smaller, light, gray
+                    self._draw_text_right(draw, line, frame_info['new_size'][0] - right_margin, current_y, small_font_size, bold=False, text_color=secondary_color)
+                    current_y += small_line_height
         
         # Save with specified quality
         framed_image.save(output_path, quality=self.quality, optimize=True)

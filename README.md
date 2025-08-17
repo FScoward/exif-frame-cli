@@ -57,6 +57,9 @@ exif-frame-cli photo.jpg
 # Create white frame instead of black
 exif-frame-cli photo.jpg --theme white
 
+# Use full instant camera layout with margins on all sides
+exif-frame-cli photo.jpg --layout full
+
 # Specify custom output file
 exif-frame-cli photo.jpg --output framed_photo.jpg
 
@@ -69,6 +72,7 @@ exif-frame-cli photo.jpg --verbose
 - `INPUT_FILE`: Path to the image file to process (required)
 - `--output, -o`: Output file path (optional, defaults to `{input}_framed.{ext}`)
 - `--theme`: Frame color theme - `black` (default) or `white`
+- `--layout`: Frame layout - `compact` (default, no top/side margins) or `full` (margins on all sides)
 - `--verbose, -v`: Enable verbose output to display extracted EXIF data
 - `--help`: Show help message
 - `--version`: Show version information
@@ -76,12 +80,18 @@ exif-frame-cli photo.jpg --verbose
 ### Examples
 
 ```bash
-# Process with default settings (black frame)
+# Process with default settings (compact black frame)
 exif-frame-cli vacation_photo.jpg
 # Output: vacation_photo_framed.jpg
 
 # Create white frame with black text
 exif-frame-cli vacation_photo.jpg --theme white
+
+# Classic instant camera style with full margins
+exif-frame-cli vacation_photo.jpg --layout full
+
+# Combine options: white frame with full layout
+exif-frame-cli vacation_photo.jpg --theme white --layout full
 
 # Custom output location
 exif-frame-cli vacation_photo.jpg -o ~/Desktop/framed_vacation.jpg
@@ -92,16 +102,19 @@ exif-frame-cli portrait.jpg --verbose
 
 ### Sample Output
 
-The tool creates a frame with:
-- **Image positioned at the top** with no margins
-- **Bottom area** containing metadata (15% of image height)
-- **Left side**: Camera name (bold) and lens model (lighter)
-- **Right side**: Settings like "70mm f/2.8 1/4s ISO6400" (bold) and timestamp (lighter)
-- **100px margins** from left and right edges for text positioning
+The tool creates frames with different layouts and themes:
+
+**Layout Options:**
+- `--layout compact` (default): Image fills the frame edge-to-edge with only bottom metadata area (15% of image height)
+- `--layout full`: Classic instant camera style with margins on all sides (5% top/sides, 25% bottom)
 
 **Theme Options:**
 - `--theme black` (default): Black frame with white/light gray text
 - `--theme white`: White frame with black/dark gray text
+
+**Text Layout:**
+- **Left side**: Camera name (bold) and lens model (lighter)
+- **Right side**: Settings like "70mm f/2.8 1/4s ISO6400" (bold) and timestamp (lighter)
 
 ## Requirements
 
