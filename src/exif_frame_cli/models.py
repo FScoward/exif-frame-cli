@@ -15,6 +15,7 @@ class ExifData:
     aperture: Optional[str] = None
     shutter_speed: Optional[str] = None
     iso: Optional[str] = None
+    datetime_original: Optional[str] = None
     
     @property
     def camera_full_name(self) -> str:
@@ -46,3 +47,17 @@ class ExifData:
             settings.append(f"ISO{self.iso}")
             
         return " ".join(settings) if settings else "Settings Unknown"
+    
+    def format_datetime(self) -> str:
+        """Format datetime for display."""
+        if not self.datetime_original:
+            return ""
+        
+        try:
+            # Parse the EXIF datetime format: "YYYY:MM:DD HH:MM:SS"
+            from datetime import datetime
+            dt = datetime.strptime(self.datetime_original, "%Y:%m:%d %H:%M:%S")
+            # Format like the sample: "20:13:02 2024.12.09"
+            return dt.strftime("%H:%M:%S %Y.%m.%d")
+        except:
+            return self.datetime_original

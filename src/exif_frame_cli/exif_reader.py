@@ -93,5 +93,6 @@ class ExifReader:
             focal_length=self._format_focal_length(self.exif_dict.get('FocalLength')),
             aperture=self._format_aperture(self.exif_dict.get('FNumber')),
             shutter_speed=self._format_shutter_speed(self.exif_dict.get('ExposureTime')),
-            iso=str(self.exif_dict.get('ISOSpeedRatings', '')) if self.exif_dict.get('ISOSpeedRatings') else None
+            iso=str(self.exif_dict.get('ISOSpeedRatings', '')) if self.exif_dict.get('ISOSpeedRatings') else None,
+            datetime_original=self.exif_dict.get('DateTimeOriginal')
         )
