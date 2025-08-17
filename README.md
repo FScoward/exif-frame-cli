@@ -38,8 +38,11 @@ poetry shell
 git clone https://github.com/FScoward/exif-frame-cli.git
 cd exif-frame-cli
 
-# Install in development mode
+# Install globally (can use `exif-frame-cli` command anywhere)
 pip install -e .
+
+# Uninstall
+pip uninstall exif-frame-cli -y
 ```
 
 ## Usage
