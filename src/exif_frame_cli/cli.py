@@ -43,8 +43,14 @@ from .models import ExifData
     default=1.3,
     help='Font size scale factor (0.5-3.0, default: 1.3).'
 )
+@click.option(
+    '--theme',
+    type=click.Choice(['black', 'white'], case_sensitive=False),
+    default='black',
+    help='Frame color theme: black frame with white text, or white frame with black text (default: black).'
+)
 @click.version_option()
-def main(input_file: str, output: Optional[str], style: str, verbose: bool, quality: int, font_scale: float):
+def main(input_file: str, output: Optional[str], style: str, verbose: bool, quality: int, font_scale: float, theme: str):
     """Create instant camera-style frames for digital photos using EXIF metadata.
     
     INPUT_FILE: Path to the image file to process.
@@ -76,6 +82,7 @@ def main(input_file: str, output: Optional[str], style: str, verbose: bool, qual
             click.echo(f"Processing: {input_path}")
             click.echo(f"Output: {output_path}")
             click.echo(f"Style: {style}")
+            click.echo(f"Theme: {theme}")
             click.echo(f"Quality: {quality}")
             click.echo(f"Font scale: {font_scale}")
         
@@ -96,7 +103,7 @@ def main(input_file: str, output: Optional[str], style: str, verbose: bool, qual
         
         # Generate frame
         try:
-            frame_generator = FrameGenerator(style=style, quality=quality, font_scale=font_scale)
+            frame_generator = FrameGenerator(style=style, quality=quality, font_scale=font_scale, theme=theme)
             result_path = frame_generator.generate_frame(
                 str(input_path), exif_data, str(output_path)
             )

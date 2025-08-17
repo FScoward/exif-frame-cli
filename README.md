@@ -1,19 +1,20 @@
 # exif-frame-cli
 
-A command-line interface tool for extracting EXIF data and creating frames from images.
+A command-line interface tool for creating stylish black frames with EXIF metadata on digital photos.
 
 ## Features
 
-Creates instant camera-style frames for digital photos using EXIF metadata. The tool extracts and displays the following information on photo frames:
+Creates minimalist black frames for digital photos using EXIF metadata. The tool extracts and displays the following information:
 
-- **Camera Model** - The camera used to take the photo
-- **Lens Information** - Lens model and specifications  
-- **Focal Length** - The focal length setting used
-- **Aperture (f-stop)** - The f-value/aperture setting
-- **Shutter Speed** - The exposure time
-- **ISO Sensitivity** - The ISO setting used
+**Left Side:**
+- **Camera Model** - The camera used to take the photo (bold, white text)
+- **Lens Information** - Lens model and specifications (smaller, gray text)
 
-This mimics the information typically printed on instant camera photo frames, giving your digital photos a nostalgic instant camera aesthetic.
+**Right Side:**
+- **Technical Settings** - Focal length, aperture, shutter speed, and ISO (bold, white text)
+- **Date & Time** - When the photo was taken (smaller, gray text)
+
+The frame features a clean black background with no top, left, or right margins - only a bottom area for metadata display, creating a modern and professional look.
 
 ## Installation
 
@@ -50,16 +51,16 @@ pip uninstall exif-frame-cli -y
 ### Basic Usage
 
 ```bash
-# Process a single image
+# Process a single image (creates photo_framed.jpg)
 exif-frame-cli photo.jpg
 
-# Specify output file
+# Create white frame instead of black
+exif-frame-cli photo.jpg --theme white
+
+# Specify custom output file
 exif-frame-cli photo.jpg --output framed_photo.jpg
 
-# Use different frame style
-exif-frame-cli photo.jpg --style modern
-
-# Enable verbose output
+# Enable verbose output to see EXIF details
 exif-frame-cli photo.jpg --verbose
 ```
 
@@ -67,29 +68,62 @@ exif-frame-cli photo.jpg --verbose
 
 - `INPUT_FILE`: Path to the image file to process (required)
 - `--output, -o`: Output file path (optional, defaults to `{input}_framed.{ext}`)
-- `--style, -s`: Frame style - `classic` or `modern` (default: classic)
-- `--verbose, -v`: Enable verbose output
+- `--theme`: Frame color theme - `black` (default) or `white`
+- `--verbose, -v`: Enable verbose output to display extracted EXIF data
 - `--help`: Show help message
 - `--version`: Show version information
 
 ### Examples
 
 ```bash
-# Process with default settings
+# Process with default settings (black frame)
 exif-frame-cli vacation_photo.jpg
+# Output: vacation_photo_framed.jpg
+
+# Create white frame with black text
+exif-frame-cli vacation_photo.jpg --theme white
 
 # Custom output location
 exif-frame-cli vacation_photo.jpg -o ~/Desktop/framed_vacation.jpg
 
-# Modern style with verbose output
-exif-frame-cli portrait.jpg --style modern --verbose
+# View EXIF data extraction process
+exif-frame-cli portrait.jpg --verbose
 ```
+
+### Sample Output
+
+The tool creates a frame with:
+- **Image positioned at the top** with no margins
+- **Bottom area** containing metadata (15% of image height)
+- **Left side**: Camera name (bold) and lens model (lighter)
+- **Right side**: Settings like "70mm f/2.8 1/4s ISO6400" (bold) and timestamp (lighter)
+- **100px margins** from left and right edges for text positioning
+
+**Theme Options:**
+- `--theme black` (default): Black frame with white/light gray text
+- `--theme white`: White frame with black/dark gray text
 
 ## Requirements
 
 - Python 3.8 or higher
-- PIL/Pillow for image processing
+- PIL/Pillow for image processing and EXIF extraction
 - Click for CLI interface
+
+## Development
+
+```bash
+# Install development dependencies
+poetry install
+
+# Run formatting
+poetry run black src/
+
+# Run linting
+poetry run flake8 src/
+
+# Run tests (when available)
+poetry run pytest
+```
 
 ## Contributing
 

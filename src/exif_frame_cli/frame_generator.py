@@ -8,12 +8,21 @@ from .models import ExifData
 class FrameGenerator:
     """Generate instant camera-style frames with EXIF metadata."""
     
-    def __init__(self, style: str = "classic", quality: int = 95, font_scale: float = 1.0):
+    def __init__(self, style: str = "classic", quality: int = 95, font_scale: float = 1.0, theme: str = "black"):
         self.style = style
         self.quality = quality
         self.font_scale = font_scale
-        self.frame_color = (0, 0, 0)        # Black background
-        self.text_color = (255, 255, 255)   # White text
+        self.theme = theme.lower()
+        
+        # Set colors based on theme
+        if self.theme == "white":
+            self.frame_color = (255, 255, 255)  # White background
+            self.primary_text_color = (0, 0, 0)     # Black text
+            self.secondary_text_color = (100, 100, 100)  # Dark gray text
+        else:  # black theme (default)
+            self.frame_color = (0, 0, 0)        # Black background
+            self.primary_text_color = (255, 255, 255)   # White text
+            self.secondary_text_color = (180, 180, 180) # Light gray text
         
     def _calculate_frame_dimensions(self, image_size: Tuple[int, int]) -> dict:
         """Calculate frame dimensions based on image size."""
@@ -93,7 +102,7 @@ class FrameGenerator:
         # Get text dimensions
         bbox = draw.textbbox((0, 0), text, font=font)
         
-        color = text_color if text_color is not None else self.text_color
+        color = text_color if text_color is not None else self.primary_text_color
         draw.text((x_position, y_position), text, fill=color, font=font)
         return bbox[3] - bbox[1]  # Return text height
     
@@ -144,7 +153,7 @@ class FrameGenerator:
         # Position text so it ends at right_x
         x_position = right_x - text_width
         
-        color = text_color if text_color is not None else self.text_color
+        color = text_color if text_color is not None else self.primary_text_color
         draw.text((x_position, y_position), text, fill=color, font=font)
         return bbox[3] - bbox[1]  # Return text height
     
@@ -197,9 +206,9 @@ class FrameGenerator:
         base_font_size = int(base_font_size * 1.3)  # Increase font size by 1.3x
         small_font_size = int(base_font_size * 0.75)  # Second line smaller
         
-        # Define colors
-        primary_color = (255, 255, 255)   # White for main text
-        secondary_color = (180, 180, 180) # Light gray for secondary text
+        # Use theme colors
+        primary_color = self.primary_text_color
+        secondary_color = self.secondary_text_color
         
         # Calculate vertical positioning
         text_area_center_y = frame_info['text_area_start'] + frame_info['text_area_height'] // 2
