@@ -55,8 +55,19 @@ from .models import ExifData
     default='compact',
     help='Frame layout: compact (no top/sides margins) or full (margins on all sides) (default: compact).'
 )
+@click.option(
+    '--cinescope',
+    is_flag=True,
+    help='Add cinescope bars (letterbox) to create a cinematic aspect ratio.'
+)
+@click.option(
+    '--aspect-ratio',
+    type=click.Choice(['2.35', '2.40', '1.85'], case_sensitive=False),
+    default='2.35',
+    help='Cinescope aspect ratio (default: 2.35:1).'
+)
 @click.version_option()
-def main(input_file: str, output: Optional[str], style: str, verbose: bool, quality: int, font_scale: float, theme: str, layout: str):
+def main(input_file: str, output: Optional[str], style: str, verbose: bool, quality: int, font_scale: float, theme: str, layout: str, cinescope: bool, aspect_ratio: str):
     """Create instant camera-style frames for digital photos using EXIF metadata.
     
     INPUT_FILE: Path to the image file to process.
@@ -92,6 +103,8 @@ def main(input_file: str, output: Optional[str], style: str, verbose: bool, qual
             click.echo(f"Layout: {layout}")
             click.echo(f"Quality: {quality}")
             click.echo(f"Font scale: {font_scale}")
+            if cinescope:
+                click.echo(f"Cinescope: enabled ({aspect_ratio}:1)")
         
         # Extract EXIF data
         try:
@@ -110,7 +123,7 @@ def main(input_file: str, output: Optional[str], style: str, verbose: bool, qual
         
         # Generate frame
         try:
-            frame_generator = FrameGenerator(style=style, quality=quality, font_scale=font_scale, theme=theme, layout=layout)
+            frame_generator = FrameGenerator(style=style, quality=quality, font_scale=font_scale, theme=theme, layout=layout, cinescope=cinescope, aspect_ratio=float(aspect_ratio))
             result_path = frame_generator.generate_frame(
                 str(input_path), exif_data, str(output_path)
             )

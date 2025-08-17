@@ -8,12 +8,14 @@ from .models import ExifData
 class FrameGenerator:
     """Generate instant camera-style frames with EXIF metadata."""
     
-    def __init__(self, style: str = "classic", quality: int = 95, font_scale: float = 1.0, theme: str = "black", layout: str = "compact"):
+    def __init__(self, style: str = "classic", quality: int = 95, font_scale: float = 1.0, theme: str = "black", layout: str = "compact", cinescope: bool = False, aspect_ratio: float = 2.35):
         self.style = style
         self.quality = quality
         self.font_scale = font_scale
         self.theme = theme.lower()
         self.layout = layout.lower()
+        self.cinescope = cinescope
+        self.aspect_ratio = aspect_ratio
         
         # Set colors based on theme
         if self.theme == "white":
@@ -25,6 +27,126 @@ class FrameGenerator:
             self.primary_text_color = (255, 255, 255)   # White text
             self.secondary_text_color = (180, 180, 180) # Light gray text
         
+        # Cinescope bar color (always black for cinematic effect)
+        self.cinescope_color = (0, 0, 0)
+        
+    def _add_cinescope_bars(self, image: Image.Image, exif_data: ExifData = None) -> tuple[Image.Image, dict]:
+        """Add cinescope bars to create cinematic aspect ratio with EXIF info."""
+        if not self.cinescope:
+            return image, {}
+        
+        original_width, original_height = image.size
+        
+        # Calculate target height based on aspect ratio
+        target_height = int(original_width / self.aspect_ratio)
+        
+        # If target height is greater than or equal to original height, no bars needed
+        if target_height >= original_height:
+            return image, {}
+        
+        # Calculate bar height (distributed equally top and bottom)
+        total_bar_height = original_height - target_height
+        bar_height = total_bar_height // 2
+        
+        # Create new image with cinescope bars
+        cinescope_image = Image.new('RGB', (original_width, original_height), self.cinescope_color)
+        
+        # Calculate position to center the cinematic area
+        y_offset = bar_height
+        
+        # Instead of cropping, we'll overlay black bars on top and bottom
+        cinescope_image.paste(image, (0, 0))
+        
+        # Draw black bars
+        draw = ImageDraw.Draw(cinescope_image)
+        # Top bar
+        draw.rectangle([0, 0, original_width, bar_height], fill=self.cinescope_color)
+        # Bottom bar
+        draw.rectangle([0, original_height - bar_height, original_width, original_height], fill=self.cinescope_color)
+        
+        # Add EXIF information to cinescope bars if provided
+        if exif_data:
+            self._draw_cinescope_text(draw, exif_data, original_width, bar_height, original_height - bar_height)
+        
+        # Return cinescope info for frame generation
+        cinescope_info = {
+            'bar_height': bar_height,
+            'top_bar_area': (0, 0, original_width, bar_height),
+            'bottom_bar_area': (0, original_height - bar_height, original_width, original_height),
+            'cinematic_area': (0, bar_height, original_width, original_height - bar_height)
+        }
+        
+        return cinescope_image, cinescope_info
+    
+    def _draw_cinescope_text(self, draw: ImageDraw.Draw, exif_data: ExifData, image_width: int, top_bar_height: int, bottom_bar_y: int):
+        """Draw EXIF information in cinescope bars."""
+        # Calculate font size based on bar height - much larger
+        base_font_size = max(24, int(top_bar_height * 0.7))  # Use 70% of bar height (increased from 40%)
+        scaled_font_size = int(base_font_size * self.font_scale)
+        font_size = max(20, min(scaled_font_size, 80))  # Larger bounds (was 14-48, now 20-80)
+        
+        # Margins for text positioning
+        margin = 60
+        
+        # Only bottom bar: Use same layout as full frame mode (center-aligned)
+        bottom_bar_height = top_bar_height  # Same height as top bar
+        if bottom_bar_height > 20:  # Only draw if bar is tall enough
+            # Combine camera and settings into single centered text blocks like full layout
+            camera_info_text = f"{exif_data.camera_full_name}"
+            if exif_data.lens_model and exif_data.lens_model != "Unknown Lens":
+                camera_info_text += f" / {exif_data.lens_model}"
+            
+            settings_info_text = exif_data.format_settings()
+            if exif_data.format_datetime():
+                settings_info_text += f" • {exif_data.format_datetime()}"
+            
+            # Calculate font sizes - make them 1.3x larger for cinescope
+            base_font_size = max(20, int(bottom_bar_height * 0.3))  # Adjust for cinescope bar height
+            scaled_font_size = int(base_font_size * self.font_scale * 1.3)  # 1.3x larger for cinescope
+            large_font_size = max(24, min(scaled_font_size, 80))  # Increased bounds
+            small_font_size = int(large_font_size * 0.75)
+            
+            # Calculate text positioning for center alignment
+            large_line_height = int(large_font_size * 1.4)
+            small_line_height = int(small_font_size * 1.4)
+            total_height = large_line_height + small_line_height
+            
+            # Calculate text area center
+            text_area_center_y = bottom_bar_y + bottom_bar_height // 2
+            start_y = text_area_center_y - total_height // 2
+            frame_center_x = image_width // 2
+            
+            # Draw camera info (larger, bold)
+            self._draw_text_center(draw, camera_info_text, frame_center_x, start_y, large_font_size, bold=True, text_color=(255, 255, 255))
+            
+            # Draw settings info (smaller, lighter)
+            self._draw_text_center(draw, settings_info_text, frame_center_x, start_y + large_line_height, small_font_size, bold=False, text_color=(200, 200, 200))
+    
+    def _get_text_bbox(self, text: str, font_size: int) -> tuple:
+        """Get text bounding box for size calculations."""
+        # Try to get a font for measurement
+        font_names = [
+            "HelveticaNeue-Medium.ttc", "HelveticaNeue-Bold.ttc", "Helvetica-Bold.ttc",
+            "SF-Pro-Display-Medium.otf", "Roboto-Medium.ttf", "Inter-Medium.ttf",
+            "Lato-Bold.ttf", "Arial-Bold.ttf", "DejaVuSans-Bold.ttf"
+        ]
+        
+        font = None
+        for font_name in font_names:
+            try:
+                font = ImageFont.truetype(font_name, font_size)
+                break
+            except (OSError, IOError):
+                continue
+        
+        if font is None:
+            font = ImageFont.load_default()
+        
+        # Create a temporary draw context for measurement
+        temp_img = Image.new('RGB', (1, 1))
+        temp_draw = ImageDraw.Draw(temp_img)
+        return temp_draw.textbbox((0, 0), text, font=font)
+    
     def _calculate_frame_dimensions(self, image_size: Tuple[int, int]) -> dict:
         """Calculate frame dimensions based on image size."""
         width, height = image_size
@@ -231,6 +353,11 @@ class FrameGenerator:
         # Open original image
         original_image = Image.open(image_path)
         
+        # Apply cinescope bars if enabled
+        cinescope_info = {}
+        if self.cinescope:
+            original_image, cinescope_info = self._add_cinescope_bars(original_image, exif_data)
+        
         # Try to detect original image quality to preserve it
         original_quality = 95  # Default high quality
         try:
@@ -240,6 +367,12 @@ class FrameGenerator:
                 original_quality = 95  # Conservative high quality for preservation
         except:
             original_quality = 95
+        
+        # If cinescope is enabled and no additional frame is needed, return the cinescope image
+        if self.cinescope and cinescope_info:
+            # Save cinescope image directly without additional frame
+            original_image.save(output_path, quality=self.quality, optimize=True)
+            return output_path
         
         # Calculate frame dimensions
         frame_info = self._calculate_frame_dimensions(original_image.size)
