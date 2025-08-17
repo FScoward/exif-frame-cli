@@ -1,0 +1,105 @@
+"""Command-line interface for exif-frame-cli."""
+
+import os
+import sys
+from pathlib import Path
+from typing import Optional
+
+import click
+from PIL import Image
+
+from .exif_reader import ExifReader
+from .frame_generator import FrameGenerator
+from .models import ExifData
+
+
+@click.command()
+@click.argument('input_file', type=click.Path(exists=True, dir_okay=False))
+@click.option(
+    '--output', '-o',
+    type=click.Path(),
+    help='Output file path. If not specified, adds "_framed" to input filename.'
+)
+@click.option(
+    '--style', '-s',
+    type=click.Choice(['classic', 'modern'], case_sensitive=False),
+    default='classic',
+    help='Frame style to use (default: classic).'
+)
+@click.option(
+    '--verbose', '-v',
+    is_flag=True,
+    help='Enable verbose output.'
+)
+@click.version_option()
+def main(input_file: str, output: Optional[str], style: str, verbose: bool):
+    """Create instant camera-style frames for digital photos using EXIF metadata.
+    
+    INPUT_FILE: Path to the image file to process.
+    """
+    try:
+        # Validate input file
+        input_path = Path(input_file)
+        if not input_path.exists():
+            click.echo(f"Error: Input file '{input_file}' does not exist.", err=True)
+            sys.exit(1)
+        
+        # Check if file is a supported image format
+        try:
+            with Image.open(input_path) as img:
+                img.verify()
+        except Exception:
+            click.echo(f"Error: '{input_file}' is not a valid image file.", err=True)
+            sys.exit(1)
+        
+        # Determine output path
+        if output is None:
+            output_path = input_path.parent / f"{input_path.stem}_framed{input_path.suffix}"
+        else:
+            output_path = Path(output)
+            # Ensure output directory exists
+            output_path.parent.mkdir(parents=True, exist_ok=True)
+        
+        if verbose:
+            click.echo(f"Processing: {input_path}")
+            click.echo(f"Output: {output_path}")
+            click.echo(f"Style: {style}")
+        
+        # Extract EXIF data
+        try:
+            exif_reader = ExifReader(str(input_path))
+            exif_data = exif_reader.extract_exif_data()
+        except Exception as e:
+            click.echo(f"Error reading EXIF data: {e}", err=True)
+            # Continue with empty EXIF data
+            exif_data = ExifData()
+        
+        if verbose:
+            click.echo("\\nExtracted EXIF data:")
+            click.echo(f"  Camera: {exif_data.camera_full_name}")
+            click.echo(f"  Lens: {exif_data.lens_display_name}")
+            click.echo(f"  Settings: {exif_data.format_settings()}")
+        
+        # Generate frame
+        try:
+            frame_generator = FrameGenerator(style=style)
+            result_path = frame_generator.generate_frame(
+                str(input_path), exif_data, str(output_path)
+            )
+            
+            click.echo(f"✓ Frame generated successfully: {result_path}")
+            
+        except Exception as e:
+            click.echo(f"Error generating frame: {e}", err=True)
+            sys.exit(1)
+            
+    except KeyboardInterrupt:
+        click.echo("\\nOperation cancelled by user.", err=True)
+        sys.exit(1)
+    except Exception as e:
+        click.echo(f"Unexpected error: {e}", err=True)
+        sys.exit(1)
+
+
+if __name__ == '__main__':
+    main()

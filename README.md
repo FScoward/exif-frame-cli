@@ -17,19 +17,76 @@ This mimics the information typically printed on instant camera photo frames, gi
 
 ## Installation
 
+### Using Poetry (Recommended)
+
 ```bash
-# Installation instructions will be added based on the build system
+# Clone the repository
+git clone https://github.com/FScoward/exif-frame-cli.git
+cd exif-frame-cli
+
+# Install dependencies
+poetry install
+
+# Activate the virtual environment
+poetry shell
+```
+
+### Using pip
+
+```bash
+# Clone the repository
+git clone https://github.com/FScoward/exif-frame-cli.git
+cd exif-frame-cli
+
+# Install in development mode
+pip install -e .
 ```
 
 ## Usage
 
+### Basic Usage
+
 ```bash
-# Basic usage examples will be added as the CLI is developed
+# Process a single image
+exif-frame-cli photo.jpg
+
+# Specify output file
+exif-frame-cli photo.jpg --output framed_photo.jpg
+
+# Use different frame style
+exif-frame-cli photo.jpg --style modern
+
+# Enable verbose output
+exif-frame-cli photo.jpg --verbose
+```
+
+### Command Options
+
+- `INPUT_FILE`: Path to the image file to process (required)
+- `--output, -o`: Output file path (optional, defaults to `{input}_framed.{ext}`)
+- `--style, -s`: Frame style - `classic` or `modern` (default: classic)
+- `--verbose, -v`: Enable verbose output
+- `--help`: Show help message
+- `--version`: Show version information
+
+### Examples
+
+```bash
+# Process with default settings
+exif-frame-cli vacation_photo.jpg
+
+# Custom output location
+exif-frame-cli vacation_photo.jpg -o ~/Desktop/framed_vacation.jpg
+
+# Modern style with verbose output
+exif-frame-cli portrait.jpg --style modern --verbose
 ```
 
 ## Requirements
 
-- To be determined based on implementation
+- Python 3.8 or higher
+- PIL/Pillow for image processing
+- Click for CLI interface
 
 ## Contributing
 
