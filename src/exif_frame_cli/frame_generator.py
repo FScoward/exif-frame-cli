@@ -178,7 +178,7 @@ class FrameGenerator:
         settings_text_height = settings_bbox[3] - settings_bbox[1]
         
         # Calculate total height and center position
-        text_spacing = 20  # More reasonable spacing between lines
+        text_spacing = 55  # Wider spacing between lines for better visual separation
         total_actual_height = camera_text_height + text_spacing + settings_text_height
         text_start_y = frame_info['text_area_start'] + (frame_info['text_area_height'] - total_actual_height) // 2
         
