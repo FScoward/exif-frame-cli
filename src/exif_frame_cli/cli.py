@@ -31,8 +31,20 @@ from .models import ExifData
     is_flag=True,
     help='Enable verbose output.'
 )
+@click.option(
+    '--quality', '-q',
+    type=click.IntRange(1, 100),
+    default=95,
+    help='JPEG quality (1-100, default: 95).'
+)
+@click.option(
+    '--font-scale',
+    type=click.FloatRange(0.5, 3.0),
+    default=1.0,
+    help='Font size scale factor (0.5-3.0, default: 1.0).'
+)
 @click.version_option()
-def main(input_file: str, output: Optional[str], style: str, verbose: bool):
+def main(input_file: str, output: Optional[str], style: str, verbose: bool, quality: int, font_scale: float):
     """Create instant camera-style frames for digital photos using EXIF metadata.
     
     INPUT_FILE: Path to the image file to process.
@@ -64,6 +76,8 @@ def main(input_file: str, output: Optional[str], style: str, verbose: bool):
             click.echo(f"Processing: {input_path}")
             click.echo(f"Output: {output_path}")
             click.echo(f"Style: {style}")
+            click.echo(f"Quality: {quality}")
+            click.echo(f"Font scale: {font_scale}")
         
         # Extract EXIF data
         try:
@@ -82,7 +96,7 @@ def main(input_file: str, output: Optional[str], style: str, verbose: bool):
         
         # Generate frame
         try:
-            frame_generator = FrameGenerator(style=style)
+            frame_generator = FrameGenerator(style=style, quality=quality, font_scale=font_scale)
             result_path = frame_generator.generate_frame(
                 str(input_path), exif_data, str(output_path)
             )

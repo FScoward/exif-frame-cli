@@ -8,10 +8,12 @@ from .models import ExifData
 class FrameGenerator:
     """Generate instant camera-style frames with EXIF metadata."""
     
-    def __init__(self, style: str = "classic"):
+    def __init__(self, style: str = "classic", quality: int = 95, font_scale: float = 1.0):
         self.style = style
+        self.quality = quality
+        self.font_scale = font_scale
         self.frame_color = (255, 255, 255)  # White frame
-        self.text_color = (50, 50, 50)      # Dark gray text
+        self.text_color = (120, 120, 120)   # Light gray text
         
     def _calculate_frame_dimensions(self, image_size: Tuple[int, int]) -> dict:
         """Calculate frame dimensions based on image size."""
@@ -35,20 +37,21 @@ class FrameGenerator:
     
     def _get_font_size(self, text: str, max_width: int, max_height: int) -> int:
         """Calculate appropriate font size for given text and area."""
-        # Much larger base font size based on available space
-        base_size = max_height // 2  # Use 1/2 of available height (larger than before)
+        # Larger base font size for better readability
+        base_size = max_height // 3  # Use 1/3 of available height
         
-        # Calculate based on text length and available width - much more generous
-        width_based_size = max_width // len(text) * 10  # Even more generous width calculation
+        # Calculate based on text length and available width
+        width_based_size = max_width // len(text) * 3  # More generous width calculation
         
-        # Use the smaller of the two, but with much higher minimums
+        # Use the smaller of the two
         font_size = min(base_size, width_based_size)
         
-        # Set much larger bounds - increase minimum significantly
-        return max(80, min(font_size, 140))
+        # Set larger bounds for better visibility and apply scale factor
+        scaled_font_size = int(font_size * self.font_scale)
+        return max(int(24 * self.font_scale), min(scaled_font_size, int(72 * self.font_scale)))
     
     def _draw_text_line(self, draw: ImageDraw.Draw, text: str, y_position: int, 
-                       frame_width: int, side_margin: int, font_size: int, bold: bool = False):
+                       frame_width: int, side_margin: int, font_size: int, bold: bool = False, text_color=None):
         """Draw a line of text centered horizontally."""
         # Try more stylish fonts first
         if bold:
@@ -94,7 +97,8 @@ class FrameGenerator:
         # Center the text
         x_position = (frame_width - text_width) // 2
         
-        draw.text((x_position, y_position), text, fill=self.text_color, font=font)
+        color = text_color if text_color is not None else self.text_color
+        draw.text((x_position, y_position), text, fill=color, font=font)
         return bbox[3] - bbox[1]  # Return text height
     
     def generate_frame(self, image_path: str, exif_data: ExifData, output_path: str):
@@ -102,13 +106,23 @@ class FrameGenerator:
         # Open original image
         original_image = Image.open(image_path)
         
+        # Try to detect original image quality to preserve it
+        original_quality = 95  # Default high quality
+        try:
+            # Check if the original image has quality info
+            if hasattr(original_image, 'quantization'):
+                # Estimate quality from quantization tables (rough estimate)
+                original_quality = 95  # Conservative high quality for preservation
+        except:
+            original_quality = 95
+        
         # Calculate frame dimensions
         frame_info = self._calculate_frame_dimensions(original_image.size)
         
         # Create new image with frame
         framed_image = Image.new('RGB', frame_info['new_size'], self.frame_color)
         
-        # Paste original image onto frame
+        # Paste original image onto frame without recompression
         framed_image.paste(original_image, frame_info['image_position'])
         
         # Add metadata text
@@ -126,8 +140,8 @@ class FrameGenerator:
         camera_font_size = self._get_font_size(
             camera_lens_text, text_area_width, line_height
         )
-        # Make camera/lens text 30% larger
-        camera_font_size = int(camera_font_size * 1.3)
+        # Make camera/lens text slightly larger but more subtle
+        camera_font_size = int(camera_font_size * 1.15)
         
         # First get actual text heights to calculate proper centering
         # Create temporary font to measure text heights
@@ -164,7 +178,7 @@ class FrameGenerator:
         settings_text_height = settings_bbox[3] - settings_bbox[1]
         
         # Calculate total height and center position
-        text_spacing = 80  # Spacing between lines
+        text_spacing = 20  # More reasonable spacing between lines
         total_actual_height = camera_text_height + text_spacing + settings_text_height
         text_start_y = frame_info['text_area_start'] + (frame_info['text_area_height'] - total_actual_height) // 2
         
@@ -172,7 +186,7 @@ class FrameGenerator:
         y_pos = text_start_y
         actual_camera_height = self._draw_text_line(
             draw, camera_lens_text, y_pos, 
-            frame_info['new_size'][0], frame_info['side_margin'], camera_font_size, bold=True
+            frame_info['new_size'][0], frame_info['side_margin'], camera_font_size, bold=True, text_color=(0, 0, 0)
         )
         
         # Draw second line: Technical settings with proper spacing
@@ -182,7 +196,7 @@ class FrameGenerator:
             frame_info['new_size'][0], frame_info['side_margin'], settings_font_size
         )
         
-        # Save the framed image
-        framed_image.save(output_path, quality=80, optimize=True)
+        # Save with specified quality
+        framed_image.save(output_path, quality=self.quality, optimize=True)
         
         return output_path
