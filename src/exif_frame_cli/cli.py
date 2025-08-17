@@ -40,8 +40,8 @@ from .models import ExifData
 @click.option(
     '--font-scale',
     type=click.FloatRange(0.5, 3.0),
-    default=1.0,
-    help='Font size scale factor (0.5-3.0, default: 1.0).'
+    default=1.3,
+    help='Font size scale factor (0.5-3.0, default: 1.3).'
 )
 @click.version_option()
 def main(input_file: str, output: Optional[str], style: str, verbose: bool, quality: int, font_scale: float):
