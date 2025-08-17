@@ -12,7 +12,7 @@ class FrameGenerator:
         self.style = style
         self.quality = quality
         self.font_scale = font_scale
-        self.frame_color = (255, 255, 255)  # White frame
+        self.frame_color = (248, 246, 242)  # Off-white, cream-like frame
         self.text_color = (120, 120, 120)   # Light gray text
         
     def _calculate_frame_dimensions(self, image_size: Tuple[int, int]) -> dict:
